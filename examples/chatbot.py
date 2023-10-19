@@ -93,9 +93,15 @@ def main():
     #     " unconditionally."
     # )
     context = ""
-
     end_string = chatbot_args.end_string
     prompt_structure = chatbot_args.prompt_structure
+    use_vllm_flag = input("Please choose whether use vllm service(True/False):")
+    try:
+        use_vllm_flag = bool(eval(use_vllm_flag))
+    except (NameError, SyntaxError):
+        print("输入无效，请输入 True 或 False")
+        # 如果用户输入无法解析为 bool 值，这里可以设置一个默认值，或者进行其他处理
+        use_vllm_flag = False 
 
     while True:
         input_text = input("User >>> ")
@@ -129,7 +135,8 @@ def main():
             token_per_step=token_per_step,
             temperature=inferencer_args.temperature,
             end_string=end_string,
-            input_dataset=input_dataset
+            input_dataset=input_dataset,
+            use_vllm_flag = use_vllm_flag
         ):
             # Prints characters in the buffer
             new_print_index = print_index

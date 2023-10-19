@@ -20,6 +20,7 @@ from transformers import AutoConfig
 import torch.distributed as dist
 import torch.nn.functional as F
 
+from lmflow.utils.vllm import LLM, SamplingParams
 from lmflow.args import DatasetArguments
 from lmflow.datasets.dataset import Dataset
 from lmflow.pipeline.base_pipeline import BasePipeline
@@ -119,11 +120,14 @@ class Inferencer(BasePipeline):
         self,
         model,
         dataset: Dataset,
+        llm: LLM,
+        vllm_params: SamplingParams,
         max_new_tokens: int=100,
         temperature: float=0.0,
         prompt_structure: str='{input}',
+        use_vllm_flag: bool=False, 
         remove_image_flag: bool=False,
-        chatbot_type: str="mini_gpt",
+        chatbot_type: str="mini_gpt",  
     ):
         """
         Perform inference for a model
@@ -140,6 +144,7 @@ class Inferencer(BasePipeline):
 
         output_dataset: Dataset object.
         """
+
         if dataset.get_type() not in supported_dataset_type:
             raise NotImplementedError(
                 'input dataset should have type {}'.format(
@@ -152,6 +157,7 @@ class Inferencer(BasePipeline):
             "instances": [
             ]
         }
+
 
         for batch_index, batch in enumerate(dataloader):
             current_batch = batch[0]        # batch size is 1
@@ -222,27 +228,36 @@ class Inferencer(BasePipeline):
             if remove_image_flag:
                 inputs["image_token_indexes"] = image_token_indexes
                 inputs["one_sample_multiple_images"] = True
-
-            outputs = model.inference(
-                inputs,
-                max_new_tokens=max_new_tokens,
-                temperature=self.inferencer_args.temperature,
-                repetition_penalty=self.inferencer_args.repetition_penalty,
-                do_sample=self.inferencer_args.do_sample,
-            )
-
-            # only return the generation, trucating the input
-            if self.model_args.arch_type != "vision_encoder_decoder":
-                text_out = model.decode(outputs[0], skip_special_tokens=True)
-                prompt_length = len(model.decode(inputs[0], skip_special_tokens=True,))
-                text_out = text_out[prompt_length:]
+            if use_vllm_flag:
+                #add_code
+                # Generate texts from the prompts. The output is a list of RequestOutput objects
+                # that contain the prompt, generated text, and other information.
+                outputs = llm.generate(input, vllm_params)
+                for output in outputs:
+                    text_out = output.outputs[0].text
+                
+                #add_code_end
             else:
-                # to avoid redundant/missing leading space problem, we use a
-                # part of the input text
-                input_text = inputs['input_ids'][0][-1:]
-                text_out = model.decode(torch.cat([input_text, outputs[0]]), skip_special_tokens=True)
-                prompt_length = len(model.decode(input_text, skip_special_tokens=True,))
-                text_out = text_out[prompt_length:]
+                outputs = model.inference(
+                    inputs,
+                    max_new_tokens=max_new_tokens,
+                    temperature=self.inferencer_args.temperature,
+                    repetition_penalty=self.inferencer_args.repetition_penalty,
+                    do_sample=self.inferencer_args.do_sample,
+                )
+
+                # only return the generation, trucating the input
+                if self.model_args.arch_type != "vision_encoder_decoder":
+                    text_out = model.decode(outputs[0], skip_special_tokens=True)
+                    prompt_length = len(model.decode(inputs[0], skip_special_tokens=True,))
+                    text_out = text_out[prompt_length:]
+                else:
+                    # to avoid redundant/missing leading space problem, we use a
+                    # part of the input text
+                    input_text = inputs['input_ids'][0][-1:]
+                    text_out = model.decode(torch.cat([input_text, outputs[0]]), skip_special_tokens=True)
+                    prompt_length = len(model.decode(input_text, skip_special_tokens=True,))
+                    text_out = text_out[prompt_length:]
 
             output_dict["instances"].append({ "text": text_out })
 
@@ -260,22 +275,34 @@ class Inferencer(BasePipeline):
         temperature,
         end_string,
         input_dataset,
+        use_vllm_flag,
         remove_image_flag: bool=False,
     ):
         response = ""
         history = []
+        #add_code
+        vllm_params = SamplingParams(temperature=self.inferencer_args.temperature, top_p=1)
+        # Create an LLM.
+        #llm = LLM(model="facebook/opt-125m")
+        llm = LLM(model=self.model_args.model_name_or_path)
+        # add_code_end
         if "ChatGLMModel" in self.config.architectures:
             for response, history in model.get_backend_model().stream_chat(model.get_tokenizer(), context, history=history):
                 response = rstrip_partial_utf8(response)
                 yield response, False
         else:
             for _ in range(0, self.inferencer_args.max_new_tokens // token_per_step):
+                
+                
                 output_dataset = self.inference(
                     model=model,
                     dataset=input_dataset,
+                    llm = llm,
+                    vllm_params= vllm_params,
                     max_new_tokens=token_per_step,
                     temperature=self.inferencer_args.temperature,
-                    remove_image_flag=remove_image_flag,
+                    use_vllm_flag = use_vllm_flag,
+                    remove_image_flag=remove_image_flag,     
                 )
 
                 new_append_text = output_dataset.to_dict()["instances"][0]["text"]
@@ -297,6 +324,9 @@ class Inferencer(BasePipeline):
                 response = response[:index]
 
                 yield response, flag_break
+
+    #def vllm_inference(self, model, temperature,input_dataset):
+        
 
 
 class SpeculativeInferencer(Inferencer):
