@@ -157,6 +157,8 @@ class Inferencer(BasePipeline):
             "instances": [
             ]
         }
+
+
         for batch_index, batch in enumerate(dataloader):
             current_batch = batch[0]        # batch size is 1
             if isinstance(current_batch['input'], str):
@@ -226,15 +228,16 @@ class Inferencer(BasePipeline):
             if remove_image_flag:
                 inputs["image_token_indexes"] = image_token_indexes
                 inputs["one_sample_multiple_images"] = True
+            #add_code
             if use_vllm_flag:
-                #add_code
+                
                 # Generate texts from the prompts. The output is a list of RequestOutput objects
                 # that contain the prompt, generated text, and other information.
                 outputs = llm.generate(input, vllm_params)
                 for output in outputs:
                     text_out = output.outputs[0].text
                 
-                #add_code_end
+            #add_code_end
             else:
                 outputs = model.inference(
                     inputs,
@@ -268,8 +271,6 @@ class Inferencer(BasePipeline):
         self,
         context,
         model,
-        llm: LLM,
-        vllm_params: SamplingParams,
         max_new_tokens,
         token_per_step,
         temperature,
@@ -280,12 +281,18 @@ class Inferencer(BasePipeline):
     ):
         response = ""
         history = []
+        #add_code
+        vllm_params = SamplingParams(temperature=self.inferencer_args.temperature, top_p=1)
+        # Create an LLM.
+        llm = LLM(model=self.model_args.model_name_or_path)
+        # add_code_end
         if "ChatGLMModel" in self.config.architectures:
             for response, history in model.get_backend_model().stream_chat(model.get_tokenizer(), context, history=history):
                 response = rstrip_partial_utf8(response)
                 yield response, False
         else:
             for _ in range(0, self.inferencer_args.max_new_tokens // token_per_step):
+                
                 
                 output_dataset = self.inference(
                     model=model,

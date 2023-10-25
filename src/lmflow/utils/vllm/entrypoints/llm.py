@@ -81,7 +81,8 @@ class LLM:
         prompts: Optional[Union[str, List[str]]] = None,
         sampling_params: Optional[SamplingParams] = None,
         prompt_token_ids: Optional[List[List[int]]] = None,
-        use_tqdm: bool = True,
+        use_tqdm: bool = False
+        ,
     ) -> List[RequestOutput]:
         """Generates the completions for the input prompts.
 
