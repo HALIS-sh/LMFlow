@@ -79,11 +79,11 @@ def main():
     model_name = model_args.model_name_or_path
     if model_args.lora_model_path is not None:
         model_name += f" + {model_args.lora_model_path}"
-    #add_code
-    vllm_params = SamplingParams(temperature=inferencer_args.temperature, top_p=1)
-    # Create an LLM.
-    llm = LLM(model=model_args.model_name_or_path)
-    # add_code_end
+    # #add_code
+    # vllm_params = SamplingParams(temperature=inferencer_args.temperature, top_p=1)
+    # # Create an LLM.
+    # llm = LLM(model=model_args.model_name_or_path)
+    # # add_code_end
     guide_message = (
         "\n"
         f"#############################################################################\n"
@@ -136,8 +136,6 @@ def main():
         for response, flag_break in inferencer.stream_inference(
             context=context,
             model=model,
-            llm = llm,
-            vllm_params = vllm_params,
             max_new_tokens=inferencer_args.max_new_tokens,
             token_per_step=token_per_step,
             temperature=inferencer_args.temperature,

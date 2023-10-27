@@ -81,6 +81,8 @@ class Inferencer(BasePipeline):
         except:
             print("Error in setting hidden size, use the default size 1024")
             self.model_hidden_size = 1024 # gpt2 seems do not have hidden_size in config
+        self.llm = LLM(model=model_args.model_name_or_path)
+        self.vllm_params = SamplingParams(temperature=inferencer_args.temperature, top_p=1)
 
 
     def create_dataloader(self, dataset: Dataset):
@@ -268,8 +270,6 @@ class Inferencer(BasePipeline):
         self,
         context,
         model,
-        llm: LLM,
-        vllm_params: SamplingParams,
         max_new_tokens,
         token_per_step,
         temperature,
@@ -290,8 +290,8 @@ class Inferencer(BasePipeline):
                 output_dataset = self.inference(
                     model=model,
                     dataset=input_dataset,
-                    llm = llm,
-                    vllm_params= vllm_params,
+                    llm = self.llm,
+                    vllm_params= self.vllm_params,
                     max_new_tokens=token_per_step,
                     temperature=self.inferencer_args.temperature,
                     use_vllm_flag = use_vllm_flag,
