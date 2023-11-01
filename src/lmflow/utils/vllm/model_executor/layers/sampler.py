@@ -59,7 +59,7 @@ class Sampler(nn.Module):
         assert len(presence_penalties) == logits.shape[0]
         assert len(frequency_penalties) == logits.shape[0]
         logits = _apply_penalties(logits, output_tokens, presence_penalties,
-                                  frequency_penalties, self.vocab_size)
+                                  frequency_penalties, self.vocab_size, input_metadata) # add.
 
         # Apply temperature scaling.
         temperatures = _get_temperatures(input_metadata)
@@ -142,16 +142,21 @@ def _get_output_tokens(input_metadata: InputMetadata) -> List[List[int]]:
                 output_tokens.append(seq_data.output_token_ids)
     return output_tokens
 
-
+global_input_ids = []  # add. 增加全局变量存储所有的input_ids
 def _apply_penalties(
     logits: torch.Tensor,
     output_tokens: List[List[int]],
     presence_penalties: List[float],
     frequency_penalties: List[float],
     vocab_size: int,
+    input_metadata: InputMetadata, # add. 增加参数
 ) -> torch.Tensor:
     num_seqs = logits.shape[0]
     # Collect the indices of sequences that have non-zero penalties.
+    if torch.max(input_metadata.input_ids_cur) > 0:  # add. 将当前处理的input_ids拼接到历史input_ids上
+            global global_input_ids
+            global_input_ids+=input_metadata.input_ids_cur.cpu().numpy().tolist()[0:input_metadata.num_valid_tokens]
+
     indices = []
     for i in range(num_seqs):
         if not output_tokens[i]:
@@ -184,7 +189,14 @@ def _apply_penalties(
 
     # We follow the definition in OpenAI API.
     # Refer to https://platform.openai.com/docs/api-reference/parameter-details
-    logits[indices] -= frequency_penalties.unsqueeze(dim=1) * bin_counts
+    #logits[indices] -= frequency_penalties.unsqueeze(dim=1) * bin_counts
+    all_input_ids = torch.Tensor(global_input_ids).type(  # add. 参考HuggingFace的惩罚处理方式
+        input_metadata.input_ids_cur.dtype).to(
+            input_metadata.input_ids_cur.device).unsqueeze(dim=0)
+    logits_ = torch.gather(logits, 1, all_input_ids)
+    logits_ = torch.where(logits_ < 0, logits_ * frequency_penalties[0], logits_ / frequency_penalties[0])
+    logits.scatter_(1, all_input_ids, logits_)
+
     presence_mask = (bin_counts > 0.0).to(dtype=logits.dtype)
     logits[indices] -= presence_penalties.unsqueeze(dim=1) * presence_mask
     return logits
