@@ -155,7 +155,7 @@ setup(
     long_description=readme_contents,
     long_description_content_type="text/markdown",
     package_dir={"": "src"},
-    packages=find_packages("src", "vllm_csrc"),
+    packages=find_packages("src", "csrc"),
     package_data={},
     install_requires=install_requires,#change
     classifiers=[
