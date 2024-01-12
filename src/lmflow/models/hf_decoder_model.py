@@ -688,6 +688,7 @@ class HFDecoderModel(DecoderModel, Tunable):
                 outputs = self.backend_model.generate(
                     input_ids=inputs,
                     pad_token_id=self.tokenizer.pad_token_id,
+                    kv_cache=self.ds_engine.module.kv_cache,
                     *args,
                     **kwargs
                 )
@@ -712,6 +713,7 @@ class HFDecoderModel(DecoderModel, Tunable):
                     raise NotImplementedError(
                         f"device \"{self.device}\" is not supported"
                     )
+            #print(outputs.logits)
         return outputs
 
 

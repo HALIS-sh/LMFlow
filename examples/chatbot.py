@@ -137,6 +137,8 @@ def main():
             context=context,
             model=model,
             max_new_tokens=inferencer_args.max_new_tokens,
+            num_beams=inferencer_args.num_beams,
+            top_p=inferencer_args.top_p,
             token_per_step=token_per_step,
             temperature=inferencer_args.temperature,
             end_string=end_string,

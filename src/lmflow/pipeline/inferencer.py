@@ -81,8 +81,7 @@ class Inferencer(BasePipeline):
         except:
             print("Error in setting hidden size, use the default size 1024")
             self.model_hidden_size = 1024 # gpt2 seems do not have hidden_size in config
-        self.llm = LLM(model=model_args.model_name_or_path)
-        self.vllm_params = SamplingParams(temperature=inferencer_args.temperature, top_p=1)
+
 
 
     def create_dataloader(self, dataset: Dataset):
@@ -122,10 +121,10 @@ class Inferencer(BasePipeline):
         self,
         model,
         dataset: Dataset,
-        llm: LLM,
-        vllm_params: SamplingParams,
         max_new_tokens: int=100,
         temperature: float=0.0,
+        num_beams: int=5,
+        top_p:float=1.0,
         prompt_structure: str='{input}',
         use_vllm_flag: bool=False, 
         remove_image_flag: bool=False,
@@ -232,9 +231,7 @@ class Inferencer(BasePipeline):
                 #add_code
                 # Generate texts from the prompts. The output is a list of RequestOutput objects
                 # that contain the prompt, generated text, and other information.
-                outputs = llm.generate(input, vllm_params)
-                for output in outputs:
-                    text_out = output.outputs[0].text
+                output = 
                 
                 #add_code_end
             else:
@@ -242,6 +239,8 @@ class Inferencer(BasePipeline):
                     inputs,
                     max_new_tokens=max_new_tokens,
                     temperature=self.inferencer_args.temperature,
+                    #num_beams=self.inferencer_args.num_beams,
+                    top_p=self.inferencer_args.top_p,
                     repetition_penalty=self.inferencer_args.repetition_penalty,
                     do_sample=self.inferencer_args.do_sample,
                 )
@@ -271,6 +270,8 @@ class Inferencer(BasePipeline):
         context,
         model,
         max_new_tokens,
+        num_beams,
+        top_p,
         token_per_step,
         temperature,
         end_string,
@@ -293,6 +294,8 @@ class Inferencer(BasePipeline):
                     llm = self.llm,
                     vllm_params= self.vllm_params,
                     max_new_tokens=token_per_step,
+                    num_beams=self.inferencer_args.num_beams,
+                    top_p=self.inferencer_args.top_p,
                     temperature=self.inferencer_args.temperature,
                     use_vllm_flag = use_vllm_flag,
                     remove_image_flag=remove_image_flag,     

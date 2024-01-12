@@ -11,19 +11,42 @@ MODEL_CONFIG_CLASSES is assigned a list of the model config classes from
 MODEL_FOR_CAUSAL_LM_MAPPING. MODEL_TYPES is assigned a tuple of the model types
 extracted from the MODEL_CONFIG_CLASSES.
 """
-
+from enum import IntEnum
+import torch
+from functools import cached_property
 from dataclasses import dataclass, field
-from typing import Optional, List
-
+from typing import Optional, List, Union, Callable
+from lmflow.pipeline.utils.vllm_transformer_utils.config import get_config
+from lmflow.pipeline.utils.vllm_logger import init_logger
+from lmflow.pipeline.utils.vllm_config import ParallelConfig
 from transformers.utils.versions import require_version
 
 from transformers import (
     MODEL_FOR_CAUSAL_LM_MAPPING,
     TrainingArguments,
+    PretrainedConfig
 )
 
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+_STR_DTYPE_TO_TORCH_DTYPE = {
+    "half": torch.float16,
+    "float16": torch.float16,
+    "float": torch.float32,
+    "float32": torch.float32,
+    "bfloat16": torch.bfloat16,
+}
+
+logger = init_logger(__name__)
+_SAMPLING_EPS = 1e-5
+class SamplingType(IntEnum):
+    GREEDY = 0
+    RANDOM = 1
+    BEAM = 2
+LogitsProcessor = Callable[[List[int], torch.Tensor], torch.Tensor]
+"""LogitsProcessor is a function that takes a list of previously generated
+tokens and a tensor of the logits for the next token, and returns a modified
+tensor of logits to sample from."""
 
 
 @dataclass
@@ -64,6 +87,10 @@ class ModelArguments:
         a string representing the specific model version to use (can be a
         branch name, tag name, or commit id).
 
+    tokenizer_revision :  str
+        a string representing the specific tokenizer version to use (can be a 
+        branch name, tag name or commit id).
+        
     use_auth_token : bool
         a boolean indicating whether to use the token generated when running
         huggingface-cli login (necessary to use this script with private models).
@@ -77,6 +104,10 @@ class ModelArguments:
         enough.
     use_int8 : bool
         a boolean indicating whether to load int8 quantization for inference.
+    max_model_len : int
+        Maximum length of a sequence (including prompt and
+            output). If None, will be derived from the model.
+    
     """
 
     model_name_or_path: Optional[str] = field(
@@ -142,6 +173,10 @@ class ModelArguments:
         default="main",
         metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
     )
+    tokenizer_revision: str = field(
+        default="main",
+        metadata={"help": "The specific tokenizer version to use (can be a branch name, tag name or commit id)."},
+    )
     use_auth_token: bool = field(
         default=False,
         metadata={
@@ -160,7 +195,7 @@ class ModelArguments:
         },
     )
     torch_dtype: Optional[str] = field(
-        default=None,
+        default="auto",
         metadata={
             "help": (
                 "Override the default `torch.dtype` and load the model under this dtype. If `auto` is passed, the "
@@ -186,6 +221,11 @@ class ModelArguments:
         default='nf4',
         metadata={"help": "The quantization type for quantization.",
                   "choices": ["nf4", "fp4"],},
+    )
+    vllm_quant_type: str = field(
+        default=None,
+        metadata={"help": "The quantization type for vllm quantization.",
+                  "choices": ["awq"],},
     )
     double_quant: bool = field(
         default=True,
@@ -259,17 +299,178 @@ class ModelArguments:
                 "the ratio of NTK in RoPE scaling."
             )
         }
-    )
+    ) 
     use_int8: bool = field(
         default=False,
         metadata={"help": "whether to load int8 quantization for inference"}
     )
-
+    seed: int = field(
+        default=0,
+        metadata={"help": "random seed"}
+    )
+    #hf_config =get_config(model_name_or_path, trust_remote_code, revision=model_revision)
+    hf_config: Optional[PretrainedConfig] = field(
+        default=None,
+        metadata={"help": "The model config."}
+    )
+    max_model_len: Optional[int] = field(
+        default=None,
+        metadata={"help": "Maximum length of a sequence (including prompt and output). If None, will be derived from the model."}
+    )
+    download_dir: Optional[str] = field(
+     default=None,
+     metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
+    )
+    load_format: Optional[str] = field(
+        default="auto",
+        metadata={"help": "The format of the pretrained model to load. Can be one of: dummy, pytorch, onnx, coreml, tensorflow, tflite, tf2onnx, keras, flax, jax, numpy, pandas, or torchscript."},
+    )
+    vllm_dtype: Optional[str] = field(
+        default=None,
+        metadata={"help": "The dtype to load the model under. If auto is passed, the dtype will be automatically derived from the model's weights."},
+    )
     def __post_init__(self):
         if self.config_overrides is not None and (self.config_name is not None or self.model_name_or_path is not None):
             raise ValueError(
                 "--config_overrides can't be used in combination with --config_name or --model_name_or_path"
             )
+        self.vllm_dtype = self._get_and_verify_dtype(self.hf_config, self.torch_dtype)
+        self.hf_config = get_config(self.model_name_or_path, self.trust_remote_code, revision=self.model_revision)
+        self.max_model_len = self._get_and_verify_max_len(self.hf_config, self.max_model_len)
+        if self.tokenizer_name is None:
+            self.tokenizer_name = self.model_name_or_path
+
+
+    def _get_and_verify_max_len(
+        self,
+        hf_config: PretrainedConfig,
+        max_model_len: Optional[int],
+        ) -> int:
+        """Get and verify the model's maximum length."""
+        derived_max_model_len = float("inf")
+        possible_keys = [
+            # OPT
+            "max_position_embeddings",
+            # GPT-2
+            "n_positions",
+            # MPT
+            "max_seq_len",
+            # Others
+            "max_sequence_length",
+            "max_seq_length",
+            "seq_len",
+        ]
+        for key in possible_keys:
+            max_len_key = getattr(self.hf_config, key, None)
+            if max_len_key is not None:
+                derived_max_model_len = min(derived_max_model_len, max_len_key)
+        if derived_max_model_len == float("inf"):
+            if max_model_len is not None:
+                # If max_model_len is specified, we use it.
+                return max_model_len
+
+            default_max_len = 2048
+            logger.warning(
+                "The model's config.json does not contain any of the following "
+                "keys to determine the original maximum length of the model: "
+                f"{possible_keys}. Assuming the model's maximum length is "
+                f"{default_max_len}.")
+            derived_max_model_len = default_max_len
+
+        rope_scaling = getattr(self.hf_config, "rope_scaling", None)
+        if rope_scaling is not None:
+            assert "factor" in rope_scaling
+            scaling_factor = rope_scaling["factor"]
+            derived_max_model_len *= scaling_factor
+
+        if max_model_len is None:
+            max_model_len = derived_max_model_len
+        elif max_model_len > derived_max_model_len:
+            raise ValueError(
+                f"User-specified max_model_len ({max_model_len}) is greater than "
+                f"the derived max_model_len ({max_len_key}={derived_max_model_len}"
+                " in model's config.json). This may lead to incorrect model "
+                "outputs or CUDA errors. Make sure the value is correct and "
+                "within the model context size.")
+        return int(max_model_len)
+    
+    def get_hidden_size(self) -> int:
+        return self.hf_config.hidden_size
+
+    def get_head_size(self) -> int:
+        # FIXME(woosuk): This may not be true for all models.
+        return self.hf_config.hidden_size // self.hf_config.num_attention_heads
+    
+    def get_num_kv_heads(self, parallel_config: "ParallelConfig") -> int:
+        """Returns the number of KV heads per GPU worker."""
+        # For GPTBigCode & Falcon:
+        # NOTE: for falcon, when new_decoder_architecture is True, the
+        # multi_query flag is ignored and we use n_head_kv for the number of
+        # KV heads.
+        falcon_model_types = ["falcon", "RefinedWeb", "RefinedWebModel"]
+        new_decoder_arch_falcon = (
+            self.hf_config.model_type in falcon_model_types
+            and getattr(self.hf_config, "new_decoder_architecture", False))
+        if not new_decoder_arch_falcon and getattr(self.hf_config,
+                                                   "multi_query", False):
+            # Multi-query attention, only one KV head.
+            # Currently, tensor parallelism is not supported in this case.
+            return 1
+        # For Falcon:
+        if getattr(self.hf_config, "n_head_kv", None) is not None:
+            return (self.hf_config.n_head_kv //
+                    parallel_config.tensor_parallel_size)
+        if getattr(self.hf_config, "num_kv_heads", None) is not None:
+            return (self.hf_config.num_kv_heads //
+                    parallel_config.tensor_parallel_size)
+        # For LLaMA-2:
+        if getattr(self.hf_config, "num_key_value_heads", None) is not None:
+            return (self.hf_config.num_key_value_heads //
+                    parallel_config.tensor_parallel_size)
+        total_num_attention_heads = self.hf_config.num_attention_heads
+        return total_num_attention_heads // parallel_config.tensor_parallel_size
+
+    def get_num_layers(self, parallel_config: "ParallelConfig") -> int:
+        total_num_hidden_layers = self.hf_config.num_hidden_layers
+        return total_num_hidden_layers // parallel_config.pipeline_parallel_size
+    def _get_and_verify_dtype(
+        self,
+        config: PretrainedConfig,
+        dtype: str,
+    ) -> torch.dtype:
+        # NOTE: getattr(config, "torch_dtype", torch.float32) is not correct
+        # because config.torch_dtype can be None.
+        config_dtype = getattr(config, "torch_dtype", None)
+        if config_dtype is None:
+            config_dtype = torch.float32
+
+        dtype = dtype.lower()
+        if dtype == "auto":
+            if config_dtype == torch.float32:
+                # Following the common practice, we use float16 for float32 models.
+                torch_dtype = torch.float16
+            else:
+                torch_dtype = config_dtype
+        else:
+            if dtype not in _STR_DTYPE_TO_TORCH_DTYPE:
+                raise ValueError(f"Unknown dtype: {dtype}")
+            torch_dtype = _STR_DTYPE_TO_TORCH_DTYPE[dtype]
+
+        # Verify the dtype.
+        if torch_dtype != config_dtype:
+            if torch_dtype == torch.float32:
+                # Upcasting to float32 is allowed.
+                pass
+            elif config_dtype == torch.float32:
+                # Downcasting from float32 to float16 or bfloat16 is allowed.
+                pass
+            else:
+                # Casting between float16 and bfloat16 is allowed with a warning.
+                logger.warning(f"Casting {config_dtype} to {torch_dtype}.")
+
+        return torch_dtype
+
+
 
 
 @dataclass
@@ -757,12 +958,12 @@ class InferencerArguments:
     )
     
     repetition_penalty: float = field(
-        default=1,
+        default=1.0,
         metadata={"help": "Repetition_penalty during inference."},
     )
         
     max_new_tokens: int = field(
-        default=100,
+        default=50,
         metadata={"help": "Maximum length during inference."},
     )
         
@@ -798,6 +999,85 @@ class InferencerArguments:
             "help": "whether turn on true random sampling during inference."
         },
     )
+    n : int = field(
+        default=1
+    )
+    use_beam_search: Optional[bool] = field(
+        default=False,
+        metadata={"help": "whether to use beam search during inference."}
+    )
+    num_beams: Optional[int] = field(
+        default=10,
+        metadata={
+            "help":(
+                "the number of beam search choices"
+            )
+        },
+    )
+    top_p: Optional[float] = field(
+        default=1.0
+    )
+    top_k: Optional[int] = field(
+        default=-1
+    )
+    length_penalty: Optional[float] = field(
+        default=1.0,
+        metadata={"help": "length penalty during inference."}
+    )
+    early_stopping: Optional[bool] = field(
+        default=False,
+        metadata={"help": "whether to stop early during inference."}
+    )
+    ignore_eos: Optional[bool] = field(
+        default=False,
+        metadata={"help": "Whether to ignore the EOS token and continue generating tokens after the EOS token is generated."}
+    )
+    skip_special_tokens: Optional[bool] = field(
+        default=True,
+        metadata={"help": "whether to skip special tokens in the output."}
+    )
+    spaces_between_special_tokens: Optional[bool] = field(
+        default=True,
+        metadata={"help": "Whether to add spaces between special tokens in the output."}
+    )
+    # stop: Optional[Union[str, List[str]]] = field(
+    #     default=None,
+    #     metadata={"help": "List of strings that stop the generation when they are generated. The returned output will not contain the stop strings."}
+    # )
+    stop_token_ids: Optional[List[int]] = field(
+        default=None,
+        metadata={"help": "List of tokens that stop the generation when they are generated. The returned output will contain the stop tokens unless the stop tokens are sepcial tokens."}
+    )
+    logits_processors: Optional[List[LogitsProcessor]] = field(
+        default=None,
+        metadata={"help": "List of functions that modify logits based on previously generated tokens."}
+    )
+    logprobs: Optional[int] = field(
+        default=None,
+        metadata={"help": "Number of log probabilities to return per token."}
+    )
+    prompt_logprobs: Optional[int] = field(
+        default=None,
+        metadata={"help": "Number of log probabilities to return per prompt token."}
+    )
+    presence_penalty: Optional[float] = field(
+        default=0.0,
+        metadata={"help": "Presence penalty to apply if a token is already present at a given position."}
+    )
+    frequency_penalty: Optional[float] = field(
+        default=0.0,
+        metadata={"help": "Frequency penalty to apply if a token has already been generated at a given position."}
+    )
+
+
+    @cached_property
+    def sampling_type(self) -> SamplingType:
+        if self.use_beam_search:
+            return SamplingType.BEAM
+        if self.temperature < _SAMPLING_EPS:
+            return SamplingType.GREEDY
+        return SamplingType.RANDOM
+    
 
 @dataclass
 class RaftAlignerArguments(TrainingArguments):
