@@ -18,7 +18,7 @@ logging.basicConfig(
 # Initialize OpenAI client with custom API endpoint
 client = OpenAI(
     base_url="https://www.apigptopen.xyz/v1", 
-    api_key="sk-1y32BUDy6ZHG5Qvf3aBb2305C04f48F4Ae5f3727C9Ab0f6a",
+    api_key="xxx",
     http_client=httpx.Client(
         base_url="https://www.apigptopen.xyz/v1",
         follow_redirects=True,

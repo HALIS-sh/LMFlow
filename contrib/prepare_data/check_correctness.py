@@ -16,7 +16,7 @@ llm = LLM(model='/home/wenhesun/.cache/huggingface/hub/models--meta-llama--Meta-
 # Initialize OpenAI client with custom API endpoint
 # client = OpenAI(
 #     base_url="https://www.apigptopen.xyz/v1", 
-#     api_key="sk-1y32BUDy6ZHG5Qvf3aBb2305C04f48F4Ae5f3727C9Ab0f6a",
+#     api_key="xxx",
 #     http_client=httpx.Client(
 #         base_url="https://www.apigptopen.xyz/v1",
 #         follow_redirects=True,
@@ -24,7 +24,7 @@ llm = LLM(model='/home/wenhesun/.cache/huggingface/hub/models--meta-llama--Meta-
 # )
 
 client = OpenAI(
-    api_key="5aa04bb1-74ff-4042-b0a3-80826f8cb16f",
+    api_key="xxx",
     base_url="https://api.sambanova.ai/v1",
 )
 

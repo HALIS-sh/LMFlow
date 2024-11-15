@@ -13,7 +13,7 @@ import os
 # if "OPENAI_API_BASE" in os.environ:
 #     del os.environ["OPENAI_API_BASE"]
 
-openai.api_key = "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"
+openai.api_key = "xxx"
 
 
 
@@ -36,7 +36,7 @@ logging.basicConfig(
 # Initialize OpenAI client with custom API endpoint
 # client = OpenAI(
 #     base_url="https://www.apigptopen.xyz/v1", 
-#     api_key="sk-1y32BUDy6ZHG5Qvf3aBb2305C04f48F4Ae5f3727C9Ab0f6a",
+#     api_key="xxx",
 #     http_client=httpx.Client(
 #         base_url="https://www.apigptopen.xyz/v1",
 #         follow_redirects=True,
