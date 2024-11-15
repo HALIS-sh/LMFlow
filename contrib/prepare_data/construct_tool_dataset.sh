@@ -1,0 +1,2 @@
+export OPENAI_API_KEY="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"
+python construct_tool_dataset_lean.py

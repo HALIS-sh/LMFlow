@@ -6,6 +6,15 @@ from openai import OpenAI
 import httpx
 import re
 from tqdm import tqdm
+import openai
+import os
+
+# # 移除可能影响的环境变量
+# if "OPENAI_API_BASE" in os.environ:
+#     del os.environ["OPENAI_API_BASE"]
+
+openai.api_key = "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"
+
 
 
 def extract_json_from_message(message):
@@ -25,14 +34,17 @@ logging.basicConfig(
 )
 
 # Initialize OpenAI client with custom API endpoint
-client = OpenAI(
-    base_url="https://www.apigptopen.xyz/v1", 
-    api_key="sk-1y32BUDy6ZHG5Qvf3aBb2305C04f48F4Ae5f3727C9Ab0f6a",
-    http_client=httpx.Client(
-        base_url="https://www.apigptopen.xyz/v1",
-        follow_redirects=True,
-    ),
-)
+# client = OpenAI(
+#     base_url="https://www.apigptopen.xyz/v1", 
+#     api_key="sk-1y32BUDy6ZHG5Qvf3aBb2305C04f48F4Ae5f3727C9Ab0f6a",
+#     http_client=httpx.Client(
+#         base_url="https://www.apigptopen.xyz/v1",
+#         follow_redirects=True,
+#     ),
+# )
+
+client = OpenAI()
+
 
 def process_data_item(data_item):
     global api_call_count, total_prompt_tokens, total_completion_tokens, total_tokens
@@ -73,11 +85,22 @@ Ensure the JSON is properly formatted.
     while attempt <= max_retries:
         try:
             # Use your client to call the API
+            # completion = client.chat.completions.create(
+            #     model="gpt-4o",
+            #     messages=[
+            #         {"role": "system", "content": "You are an AI assistant that provides responses in the specified JSON format."},
+            #         {"role": "user", "content": prompt}
+            #     ],
+            #     temperature=0
+            # )
             completion = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are an AI assistant that provides responses in the specified JSON format."},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
                 ],
                 temperature=0
             )
@@ -143,7 +166,8 @@ total_completion_tokens = 0
 total_tokens = 0
 
 # Get the first 10 data items for testing
-data_items = dataset['train'].select(range(1000))
+# data_items = dataset['train'].select(range(1000))
+data_items = dataset['train'].select(range(1100, 1110))
 # Wrap the data_items iterator with tqdm for a progress bar
 for data_item in tqdm(data_items, desc="Processing data items"):
     tool_info = process_data_item(data_item)
@@ -166,5 +190,5 @@ logging.info("End of generate tool dataset.")
 logging.info("--------------------------------------------------")
 
 # Save the tools to a JSON file
-with open('lean_tools.json', 'w', encoding='utf-8') as f:
+with open('lean_tools_1100_1200.json', 'w', encoding='utf-8') as f:
     json.dump(tools, f, ensure_ascii=False, indent=4)
