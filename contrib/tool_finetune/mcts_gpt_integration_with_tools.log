@@ -1,0 +1,140 @@
+2024-11-10 03:20:13,587 - INFO - Starting MCTS for Problem ID: 1
+2024-11-10 03:20:13,588 - INFO - Initial Conditions: {'HasSymptoms'}
+2024-11-10 03:20:13,588 - INFO - Goal Conclusions: {'DiagnosedWithFlu'}
+2024-11-10 03:20:13,588 - INFO - MCTS Iteration 1/10
+2024-11-10 03:20:13,588 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:20:14,244 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:14,247 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032013944420460OjMsd8xL)', 'type': 'new_api_error'}}
+2024-11-10 03:20:14,247 - INFO - Goal state check result: False
+2024-11-10 03:20:15,232 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:15,233 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032014933053214a7DA7EGW)', 'type': 'new_api_error'}}
+2024-11-10 03:20:15,233 - INFO - Next possible tools: []
+2024-11-10 03:20:15,233 - INFO - No actions available for the selected node. Assigning penalty.
+2024-11-10 03:20:15,233 - INFO - Iteration 1 completed with reward: 0
+2024-11-10 03:20:15,233 - INFO - MCTS Iteration 2/10
+2024-11-10 03:20:15,233 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:20:15,377 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:15,377 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 2024111003201579306128NN3UTOJX)', 'type': 'new_api_error'}}
+2024-11-10 03:20:15,377 - INFO - Goal state check result: False
+2024-11-10 03:20:16,081 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:16,082 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032015781927361YPi8k037)', 'type': 'new_api_error'}}
+2024-11-10 03:20:16,082 - INFO - Next possible tools: []
+2024-11-10 03:20:16,082 - INFO - No actions available for the selected node. Assigning penalty.
+2024-11-10 03:20:16,082 - INFO - Iteration 2 completed with reward: 0
+2024-11-10 03:20:16,082 - INFO - MCTS Iteration 3/10
+2024-11-10 03:20:16,082 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:20:16,226 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:16,227 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032015928710674sbTISDxf)', 'type': 'new_api_error'}}
+2024-11-10 03:20:16,228 - INFO - Goal state check result: False
+2024-11-10 03:20:16,796 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:16,797 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032016497333309S8onAtII)', 'type': 'new_api_error'}}
+2024-11-10 03:20:16,797 - INFO - Next possible tools: []
+2024-11-10 03:20:16,798 - INFO - No actions available for the selected node. Assigning penalty.
+2024-11-10 03:20:16,798 - INFO - Iteration 3 completed with reward: 0
+2024-11-10 03:20:16,798 - INFO - MCTS Iteration 4/10
+2024-11-10 03:20:16,798 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:20:16,944 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:16,945 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032016646536635HlYn1Pip)', 'type': 'new_api_error'}}
+2024-11-10 03:20:16,945 - INFO - Goal state check result: False
+2024-11-10 03:20:17,531 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:17,531 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032017233630272yLSDwlNr)', 'type': 'new_api_error'}}
+2024-11-10 03:20:17,531 - INFO - Next possible tools: []
+2024-11-10 03:20:17,532 - INFO - No actions available for the selected node. Assigning penalty.
+2024-11-10 03:20:17,532 - INFO - Iteration 4 completed with reward: 0
+2024-11-10 03:20:17,532 - INFO - MCTS Iteration 5/10
+2024-11-10 03:20:17,532 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:20:17,670 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:17,671 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032017372514593Q8I2orLZ)', 'type': 'new_api_error'}}
+2024-11-10 03:20:17,671 - INFO - Goal state check result: False
+2024-11-10 03:20:18,255 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:18,256 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032017955393344XRKQfFUK)', 'type': 'new_api_error'}}
+2024-11-10 03:20:18,256 - INFO - Next possible tools: []
+2024-11-10 03:20:18,256 - INFO - No actions available for the selected node. Assigning penalty.
+2024-11-10 03:20:18,256 - INFO - Iteration 5 completed with reward: 0
+2024-11-10 03:20:18,256 - INFO - MCTS Iteration 6/10
+2024-11-10 03:20:18,256 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:20:18,401 - INFO - HTTP Request: POST https://www.apigptopen.xyz/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2024-11-10 03:20:18,402 - ERROR - Error calling OpenAI API: Error code: 401 - {'error': {'message': '无效的令牌 (request id: 20241110032018103255998puU1wBc7)', 'type': 'new_api_error'}}
+2024-11-10 03:20:18,403 - INFO - Goal state check result: False
+2024-11-10 03:21:50,434 - INFO - Starting MCTS for Problem ID: 1
+2024-11-10 03:21:50,434 - INFO - Initial Conditions: {'HasSymptoms'}
+2024-11-10 03:21:50,434 - INFO - Goal Conclusions: {'DiagnosedWithFlu'}
+2024-11-10 03:21:50,435 - INFO - MCTS Iteration 1/10
+2024-11-10 03:21:50,435 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:24:56,607 - INFO - Starting MCTS for Problem ID: 1
+2024-11-10 03:24:56,607 - INFO - Initial Conditions: {'HasSymptoms'}
+2024-11-10 03:24:56,607 - INFO - Goal Conclusions: {'DiagnosedWithFlu'}
+2024-11-10 03:24:56,607 - INFO - MCTS Iteration 1/10
+2024-11-10 03:24:56,607 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:24:58,466 - INFO - API Call #1
+2024-11-10 03:24:58,466 - INFO - Prompt: 
+Given the current conditions and conclusions, determine whether the goal has been achieved.
+
+Current Conditions: ['HasSymptoms']
+Current Conclusions: []
+Goal Conclusions: ['DiagnosedWithFlu']
+
+Provide your answer in the following JSON format:
+
+{
+    "goal_achieved": true or false
+}
+
+Only provide the JSON output.
+
+2024-11-10 03:25:34,756 - INFO - Starting MCTS for Problem ID: 1
+2024-11-10 03:25:34,756 - INFO - Initial Conditions: {'HasSymptoms'}
+2024-11-10 03:25:34,756 - INFO - Goal Conclusions: {'DiagnosedWithFlu'}
+2024-11-10 03:25:34,756 - INFO - MCTS Iteration 1/10
+2024-11-10 03:25:34,756 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:25:36,620 - INFO - API Call #1
+2024-11-10 03:25:36,621 - INFO - Prompt: 
+Given the current conditions and conclusions, determine whether the goal has been achieved.
+
+Current Conditions: ['HasSymptoms']
+Current Conclusions: []
+Goal Conclusions: ['DiagnosedWithFlu']
+
+Provide your answer in the following JSON format:
+
+{
+    "goal_achieved": true or false
+}
+
+Only provide the JSON output.
+
+2024-11-10 03:25:36,621 - INFO - Completion: {
+    "goal_achieved": false
+}
+2024-11-10 03:25:36,621 - INFO - Prompt Tokens: 94
+2024-11-10 03:25:36,621 - INFO - Completion Tokens: 11
+2024-11-10 03:25:36,621 - INFO - Total Tokens: 105
+2024-11-10 03:25:36,622 - INFO - Goal state check result: False
+2024-11-10 03:25:45,168 - INFO - Starting MCTS for Problem ID: 1
+2024-11-10 03:25:45,168 - INFO - Initial Conditions: {'HasSymptoms'}
+2024-11-10 03:25:45,168 - INFO - Goal Conclusions: {'DiagnosedWithFlu'}
+2024-11-10 03:25:45,168 - INFO - MCTS Iteration 1/10
+2024-11-10 03:25:45,168 - INFO - Selected node with state: Conditions: HasSymptoms; Conclusions: 
+2024-11-10 03:25:47,031 - INFO - API Call #1
+2024-11-10 03:25:47,031 - INFO - Prompt: 
+Given the current conditions and conclusions, determine whether the goal has been achieved.
+
+Current Conditions: ['HasSymptoms']
+Current Conclusions: []
+Goal Conclusions: ['DiagnosedWithFlu']
+
+Provide your answer in the following JSON format:
+
+{
+    "goal_achieved": true or false
+}
+
+Only provide the JSON output.
+
+2024-11-10 03:25:47,031 - INFO - Completion: {
+    "goal_achieved": false
+}
+2024-11-10 03:25:47,031 - INFO - Prompt Tokens: 94
+2024-11-10 03:25:47,031 - INFO - Completion Tokens: 11
+2024-11-10 03:25:47,031 - INFO - Total Tokens: 105
+2024-11-10 03:25:47,032 - INFO - Goal state check result: False
