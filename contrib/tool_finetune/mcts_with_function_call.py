@@ -127,7 +127,6 @@ def gpt_generate_use_azure(prompt: str, model: str = 'gpt-4', max_tokens: int = 
             return ""
 
 
-
 def extract_json(response: str) -> Dict[str, Any]:
     """
     Extracts JSON block from the GPT response.
@@ -196,8 +195,19 @@ def is_goal_state_gpt_cached(current_conclusions_json: str, goal_conclusions_jso
     goal_conclusions = set(json.loads(goal_conclusions_json))
     
     # Construct the prompt for GPT-4
+#     prompt = f"""
+# Determine if the following goal conclusions have been achieved based on the current conclusions.
+
+# Current Conclusions:
+# {json.dumps(current_conclusions, indent=2)}
+
+# Goal Conclusions:
+# {json.dumps(list(goal_conclusions), indent=2)}
+
+# Answer with 'True' if all goal conclusions are achieved, otherwise 'False'. Do not provide any additional text.
+# """
     prompt = f"""
-Determine if the following goal conclusions have been achieved based on the current conclusions.
+Determine if the following goal conclusions have been achieved based on the current conclusions. Analyze the content semantically to assess whether each goal conclusion is satisfied.
 
 Current Conclusions:
 {json.dumps(current_conclusions, indent=2)}
@@ -205,8 +215,9 @@ Current Conclusions:
 Goal Conclusions:
 {json.dumps(list(goal_conclusions), indent=2)}
 
-Answer with 'True' if all goal conclusions are achieved, otherwise 'False'. Do not provide any additional text.
+Answer with 'True' if all goal conclusions are achieved, otherwise 'False'. Answer "True" or "False" with the explanation. Your answer must contain the words "True" or "False".
 """
+
 
     # Call GPT-4 to evaluate
     response = gpt_generate_use_azure(prompt)
@@ -214,9 +225,9 @@ Answer with 'True' if all goal conclusions are achieved, otherwise 'False'. Do n
     
     # Process GPT response
     response_clean = response.strip().lower()
-    if response_clean == 'true':
+    if 'true' in response_clean:
         return True
-    elif response_clean == 'false':
+    elif 'false' in response_clean:
         return False
     else:
         logging.warning(f"Unexpected GPT response for goal state check: '{response}'. Defaulting to False.")
@@ -250,7 +261,7 @@ class State:
             bool: True if the goal is achieved, False otherwise.
         """
         # Serialize the inputs to JSON strings for caching
-        current_conclusions_json = json.dumps(self.conclusions, sort_keys=True)
+        current_conclusions_json = json.dumps(list(self.conclusions), sort_keys=True)
         goal_conclusions_json = json.dumps(list(goal_conclusions), sort_keys=True)
         
         # Call the cached helper function
@@ -540,7 +551,7 @@ Only provide the JSON output.
 
     # Step 7: Generate and add the assistant's reply by calling GPT
     assistant_prompt = f"""
-Based on the following conversation (including function calls and observations), generate the assistant's reply.
+Based on the following conversation (including function calls and observations), use a natural language sentence to reply.
 
 Conversation Messages:
 {json.dumps(state.messages + [function_message, observation_message], indent=2)}
