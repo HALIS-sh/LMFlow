@@ -1,8 +1,22 @@
+import logging
+
+# Configure logging
+logging.basicConfig(
+    filename='mcts_gpt_integration_with_tools.log',  # Log file name
+    filemode='a',  # Append mode
+    format='%(asctime)s - %(levelname)s - %(message)s',  # Log format
+    level=logging.INFO  # Log level
+)
+
+# Control the log level of third packages
+logging.getLogger("bitsandbytes").setLevel(logging.WARNING)
+logging.getLogger("transformers").setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+
 import json
 import math
 import time
 import random
-import logging
 import re
 import os
 from functools import lru_cache
@@ -16,18 +30,38 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+
+# Path to your tools JSON file
+TOOLS_JSON_PATH = '/home/wenhesun/LMFlow/contrib/prepare_data/unique_extracted_tools.json'
+EMBEDDINGS_PATH = '/home/wenhesun/LMFlow/contrib/prepare_data/python_tools_embeddings.npy'
+
+# Initialize the sentence transformer model
+model = SentenceTransformer('/home/wenhesun/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/8b3219a92973c328a8e22fadcfa821b5dc75636a')
+tool_embeddings = {}
+
+# Load tools from JSON
+with open(TOOLS_JSON_PATH, 'r') as file:
+    tools = json.load(file)
+
+# Check if embeddings are already computed and saved
+if os.path.exists(EMBEDDINGS_PATH):
+    embeddings_matrix = np.load(EMBEDDINGS_PATH)
+    tool_ids = list(tool['name'] for tool in tools)
+    logging.info(f"Loaded tool embeddings from {EMBEDDINGS_PATH}")
+else:
+    # Precompute embeddings for each tool's description
+    tool_embeddings = [model.encode(tool['name'] + tool['description'], convert_to_tensor=False) for tool in tools]
+    embeddings_matrix = np.array(tool_embeddings)
+    tool_ids = list(tool['name'] for tool in tools)
+    np.save(EMBEDDINGS_PATH, embeddings_matrix)
+    logging.info(f"Computed and saved tool embeddings to {EMBEDDINGS_PATH}")
 
 # ----------------------------
 # 1. Configuration and Setup
 # ----------------------------
-
-# Configure logging
-logging.basicConfig(
-    filename='mcts_gpt_integration_with_tools.log',  # Log file name
-    filemode='a',  # Append mode
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Log format
-    level=logging.INFO  # Log level
-)
 
 # Initialize OpenAI client with custom API endpoint
 client = OpenAI(
@@ -302,69 +336,69 @@ class Node:
 # 4. Tool Definitions
 # ----------------------------
 
-# Define the list of tools
-tools = [
-    {
-        "name": "absolute_value",
-        "description": "Calculate the absolute value of a number.",
-        "conditions": [
-            "number (int or float): The number to calculate the absolute value of."
-        ],
-        "conclusions": [
-            "int or float: The absolute value of the input number."
-        ],
-        "requirement": [
-            "import math"
-        ],
-        "function_body": "def absolute_value(number):\n    return abs(number)"
-    },
-    {
-        "name": "add_vectors",
-        "description": "Add two 3-dimensional vectors.",
-        "conditions": [
-            "vector_a (array-like): First vector with 3 components (x, y, z).",
-            "vector_b (array-like): Second vector with 3 components (x, y, z)."
-        ],
-        "conclusions": [
-            "np.ndarray: The result of adding vector_a and vector_b."
-        ],
-        "requirement": [
-            "import numpy as np"
-        ],
-        "function_body": "def add_vectors(vector_a, vector_b):\n    return np.array(vector_a) + np.array(vector_b)"
-    },
-    {
-        "name": "get_news_headlines",
-        "description": "Get the latest news headlines",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "country": {
-                    "type": "string",
-                    "description": "The country for which to fetch news"
-                }
-            },
-            "required": ["country"]
-        },
-        "conditions": [
-            "Country name is provided."
-        ],
-        "conclusions": [
-            "Latest news headlines for the specified country are obtained."
-        ],
-        "function_body": """
-def get_news_headlines(country):
-    headlines = [
-        f"Breaking news in {country}: Headline 1",
-        f"Latest update in {country}: Headline 2",
-        f"Top story in {country}: Headline 3",
-        f"News flash in {country}: Headline 4"
-    ]
-    return {"headlines": headlines}
-"""
-    },
-    # Add more tools as needed
-]
+# # Define the list of tools
+# tools = [
+#     {
+#         "name": "absolute_value",
+#         "description": "Calculate the absolute value of a number.",
+#         "conditions": [
+#             "number (int or float): The number to calculate the absolute value of."
+#         ],
+#         "conclusions": [
+#             "int or float: The absolute value of the input number."
+#         ],
+#         "requirement": [
+#             "import math"
+#         ],
+#         "function_body": "def absolute_value(number):\n    return abs(number)"
+#     },
+#     {
+#         "name": "add_vectors",
+#         "description": "Add two 3-dimensional vectors.",
+#         "conditions": [
+#             "vector_a (array-like): First vector with 3 components (x, y, z).",
+#             "vector_b (array-like): Second vector with 3 components (x, y, z)."
+#         ],
+#         "conclusions": [
+#             "np.ndarray: The result of adding vector_a and vector_b."
+#         ],
+#         "requirement": [
+#             "import numpy as np"
+#         ],
+#         "function_body": "def add_vectors(vector_a, vector_b):\n    return np.array(vector_a) + np.array(vector_b)"
+#     },
+#     {
+#         "name": "get_news_headlines",
+#         "description": "Get the latest news headlines",
+#         "parameters": {
+#             "type": "object",
+#             "properties": {
+#                 "country": {
+#                     "type": "string",
+#                     "description": "The country for which to fetch news"
+#                 }
+#             },
+#             "required": ["country"]
+#         },
+#         "conditions": [
+#             "Country name is provided."
+#         ],
+#         "conclusions": [
+#             "Latest news headlines for the specified country are obtained."
+#         ],
+#         "function_body": """
+# def get_news_headlines(country):
+#     headlines = [
+#         f"Breaking news in {country}: Headline 1",
+#         f"Latest update in {country}: Headline 2",
+#         f"Top story in {country}: Headline 3",
+#         f"News flash in {country}: Headline 4"
+#     ]
+#     return {"headlines": headlines}
+# """
+#     },
+#     # Add more tools as needed
+# ]
 
 # ----------------------------
 # 5. Core Functions
@@ -432,14 +466,88 @@ def execute_tool_function(requirements: List[str], function_body: str, args: Dic
 
 
 
-def get_possible_actions(state: State, goal_conclusions: set) -> List[str]:
+# def get_possible_actions(state: State, goal_conclusions: set) -> List[str]:
+#     """
+#     Calls GPT-4 to get the next possible tools based on the current state and goal conclusions.
+#     Follows Steps 1 and 2:
+#     Step 1: Determine next possible tools by calling GPT.
+#     Step 2: Format the GPT prompt as the content of role user in the message.
+#     """
+#     # Step 1: Create the prompt for GPT to suggest next possible tools
+#     prompt = f"""
+# Based on the current state and goal, please suggest possible next tools to apply. The response must be in the following JSON format:
+
+# {{
+#     "current_conditions": {json.dumps(list(state.conditions))},
+#     "current_conclusions": {json.dumps(list(state.conclusions))},
+#     "goal_conclusions": {json.dumps(list(goal_conclusions))},
+#     "next_possible_tools": ["Tool1", "Tool2", ...]
+# }}
+
+# Use the following tool descriptions to determine applicable tools:
+
+# """
+#     for tool in tools:
+#         prompt += f"Tool Name: {tool['name']}\nDescription: {tool['description']}\nConditions: {', '.join(tool['conditions'])}\nConclusions: {', '.join(tool['conclusions'])}\n\n"
+
+#     # Step 2: Add the prompt as a user message to the state's messages
+#     user_message = {
+#         "role": "user",
+#         "content": prompt.strip()
+#     }
+#     state.messages.append(user_message)
+#     logging.info(f"Added user message to state: {user_message}")
+
+#     # Call GPT to get the next possible tools
+#     response = gpt_generate_use_azure(prompt)
+#     logging.info(f"GPT Response for Possible Actions: {response}")
+
+#     # Extract JSON from the response
+#     data = extract_json(response)
+#     actions = data.get('next_possible_tools', [])
+
+#     # Filter actions to ensure they are valid tool names
+#     valid_actions = [action for action in actions if action in [tool['name'] for tool in tools]]
+#     logging.info(f"Next possible tools after filtering: {valid_actions}")
+#     return valid_actions
+
+def get_possible_actions(state: State, goal_conclusions: set, top_n: int = 10) -> List[str]:
     """
-    Calls GPT-4 to get the next possible tools based on the current state and goal conclusions.
-    Follows Steps 1 and 2:
-    Step 1: Determine next possible tools by calling GPT.
-    Step 2: Format the GPT prompt as the content of role user in the message.
+    Retrieves the top N most relevant tools based on the current state and goal conclusions.
+    
+    Parameters:
+    - state (State): The current state containing conditions, conclusions, and messages.
+    - goal_conclusions (set): The set of goal conclusions.
+    - top_n (int): The number of top tools to retrieve.
+    
+    Returns:
+    - List[str]: A list of tool names that are most relevant.
     """
-    # Step 1: Create the prompt for GPT to suggest next possible tools
+    # Step 1: Prepare the current state text
+    current_text = " ".join(state.conditions) + " " + " ".join(state.conclusions)
+    
+    # Step 2: Compute embedding for the current state
+    current_embedding = model.encode(current_text, convert_to_tensor=False)
+    
+    # Step 3: Compute cosine similarity between current state and all tools
+    similarities = cosine_similarity([current_embedding], embeddings_matrix)[0]
+    
+    # Step 4: Get indices of top N similar tools
+    top_indices = similarities.argsort()[-top_n:][::-1]
+    
+    # Step 5: Retrieve corresponding tool names
+    top_tool_ids = [tool_ids[idx] for idx in top_indices]
+    
+    # Optional: Log the retrieved tools and their similarity scores
+    for idx in top_indices:
+        tool_id = tool_ids[idx]
+        similarity = similarities[idx]
+        logging.info(f"Tool: {tool_id}, Similarity: {similarity}")
+    
+    # Step 6: Create a subset of tools to include in the GPT prompt
+    subset_tools = [tool for tool in tools if tool['name'] in top_tool_ids]
+    
+    # Step 7: Construct the GPT prompt with the subset of tools
     prompt = f"""
 Based on the current state and goal, please suggest possible next tools to apply. The response must be in the following JSON format:
 
@@ -453,29 +561,31 @@ Based on the current state and goal, please suggest possible next tools to apply
 Use the following tool descriptions to determine applicable tools:
 
 """
-    for tool in tools:
+    for tool in subset_tools:
         prompt += f"Tool Name: {tool['name']}\nDescription: {tool['description']}\nConditions: {', '.join(tool['conditions'])}\nConclusions: {', '.join(tool['conclusions'])}\n\n"
-
-    # Step 2: Add the prompt as a user message to the state's messages
+    
+    # Step 8: Add the prompt as a user message to the state's messages
     user_message = {
         "role": "user",
         "content": prompt.strip()
     }
     state.messages.append(user_message)
     logging.info(f"Added user message to state: {user_message}")
-
-    # Call GPT to get the next possible tools
+    
+    # Step 9: Call GPT to get the next possible tools
     response = gpt_generate_use_azure(prompt)
     logging.info(f"GPT Response for Possible Actions: {response}")
-
-    # Extract JSON from the response
+    
+    # Step 10: Extract JSON from the response
     data = extract_json(response)
     actions = data.get('next_possible_tools', [])
-
-    # Filter actions to ensure they are valid tool names
-    valid_actions = [action for action in actions if action in [tool['name'] for tool in tools]]
+    
+    # Step 11: Filter actions to ensure they are valid tool names
+    valid_actions = [action for action in actions if action in top_tool_ids]
     logging.info(f"Next possible tools after filtering: {valid_actions}")
     return valid_actions
+
+
 
 def apply_action(state: State, action_name: str) -> State:
     """
